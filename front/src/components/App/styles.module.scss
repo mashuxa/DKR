@@ -1,0 +1,64 @@
+$item-size: 3em;
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes scale {
+  0% {
+    transform: scale(0.5);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.wrapper {
+  @include flex-center;
+
+  flex-direction: column;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #282c34;
+  font-size: calc(10px + 2vmin);
+  font-family: sans-serif;
+  color: white;
+}
+
+.itemWrapper {
+  animation: scale ease-out 1s 1;
+  display: flex;
+  flex-wrap: wrap;
+  width: $item-size * 3;
+  height: $item-size * 3;
+}
+
+.item {
+  @include flex-center;
+
+  box-sizing: border-box;
+  border: 1px solid aliceblue;
+  background-color: darkcyan;
+  width: $item-size;
+  height: $item-size;
+}
+
+.cross:before {
+  content: 'X';
+}
+
+.zero:before {
+  content: 'O';
+}
+
+.header {
+  @include flex-center;
+
+  flex-direction: column-reverse;
+}
