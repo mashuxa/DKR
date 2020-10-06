@@ -2,83 +2,42 @@ const PORT = process.env.PORT || 9000;
 const app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-const application = require('./models/Application');
+const Game = require('./models/Game/Game');
+const User = require('./models/User/User');
+const { PICK_FIELD, USER_DISCONNECTED, FORBIDDEN, GAME_STARTED } = require('./constants/actions');
 
 http.listen(PORT, () => {
   console.log(`Server is listening on port: ${PORT}`);
 });
 
+const games = new Map();
+
 io.sockets.on('connection', (socket) => {
-  application.addUser(socket.id);
-  socket.on('disconnect', () => {
-    application.removeUser(socket.id);
-    socket.broadcast.json.send({ event: 'disconnectUser' });
-  });
-  socket.json.send({ event: 'connected' });
+  const { roomId } = socket.handshake.query;
 
-  const startGame = () => {
-    const isCurrentUserTurn = Boolean(application.randomIndex);
-    const userIndex = application.users.indexOf(socket.id);
-    const getEvent = (symbolIndex, isNext) => ({
-      event: 'start',
-      data: { fields: application.fields, isNext, symbolIndex },
-    });
+  socket.join(roomId);
 
-    application.resetFields();
-    application.setTurn(isCurrentUserTurn ? userIndex : 1 - userIndex);
-    socket.json.send(getEvent(userIndex, isCurrentUserTurn));
-    socket.broadcast.json.send(getEvent(1 - userIndex, !isCurrentUserTurn));
-  };
-  const pickField = (data) => {
-    const { userId, fieldIndex } = data;
-    const isCurrentUserTurn = application.users[application.nextUserIndex] === userId;
-    const isEmptyField = application.fields[fieldIndex] === null;
-
-    if (isCurrentUserTurn && isEmptyField) {
-      application.setField(fieldIndex);
-
-      if (!application.checkWinner()) {
-        const getResponse = (isNext) => ({
-          event: 'nextStep',
-          data: {
-            fields: application.fields,
-            isNext,
-          },
-        });
-
-        application.toggleTurn();
-        socket.json.send(getResponse(!isCurrentUserTurn));
-        socket.broadcast.json.send(getResponse(isCurrentUserTurn));
-      } else {
-        socket.json.send({
-          event: 'hasWinner',
-          data: {
-            fields: application.fields,
-            message: 'Вы выйграли',
-          },
-        });
-        socket.broadcast.json.send({
-          event: 'hasWinner',
-          data: {
-            fields: application.fields,
-            message: 'Вы проиграли',
-          },
-        });
-      }
-    }
-  };
-
-  if (application.users.every((user) => user)) {
-    startGame();
+  if (!games.has(roomId)) {
+    games.set(roomId, new Game());
   }
 
-  socket.on('message', ({ event, data }) => {
-    if (event === 'pickField') {
-      pickField(data);
-    }
+  let game = games.get(roomId);
+  const user = new User(socket);
 
-    if (event === 'resetGame') {
-      startGame();
-    }
+  if (game.addUser(user)) {
+    socket.on('disconnect', () => {
+      game.removeUser(user);
+      socket.broadcast.emit(USER_DISCONNECTED);
+    });
+  } else {
+    socket.emit(FORBIDDEN);
+  }
+
+  socket.on(PICK_FIELD, (data) => {
+    game.doStep(data);
+  });
+
+  socket.on(GAME_STARTED, () => {
+    game.start();
   });
 });

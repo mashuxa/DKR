@@ -1,0 +1,27 @@
+@import 'src/styles/variables';
+@import 'src/styles/mixins';
+@import 'src/styles/keyframes';
+
+.itemWrapper {
+  animation: scale ease-out 1s 1;
+  display: flex;
+  flex-wrap: wrap;
+  width: $item-size;
+  height: $item-size;
+}
+
+.item {
+  @include flex-center;
+
+  box-sizing: border-box;
+  border: 1px solid $color-light;
+  background-color: $color-primary;
+}
+
+.cross:before {
+  content: 'X';
+}
+
+.zero:before {
+  content: 'O';
+}
